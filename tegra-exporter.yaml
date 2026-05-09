@@ -1,0 +1,19 @@
+stat: ["bash", "./scripts/date.sh"]
+
+otel:
+  exporters:
+    pretty: {}
+    otlp/local:
+      endpoint: localhost:4317
+      tls:
+        insecure: true
+      sending_queue:
+        enabled: false
+
+  providers:
+    meter:
+      exporters:
+        - otlp/local
+    logger:
+      exporters:
+        - pretty
