@@ -26,6 +26,8 @@ jobs:
       contents: write
       packages: write
       id-token: write
+      attestations: write
+      artifact-metadata: write
     env:
       TAG: edge
       BUILD_ID: r${{ github.run_id }}
@@ -46,6 +48,7 @@ jobs:
             test.cache-to=type=gha,scope=build,mode=max
 
       - uses: docker/bake-action@v7
+        id: push
         with:
           targets: app
           set: |
@@ -53,6 +56,12 @@ jobs:
             app.cache-to=type=gha,scope=build,mode=max
             app.output=type=local,dest=./dist
             app.output=type=registry
+
+      - uses: actions/attest@v4
+        with:
+          subject-name: ghcr.io/${{ github.repository }}
+          subject-digest: ${{ fromJSON(steps.push.outputs.metadata)['app']['containerimage.digest'] }}
+          push-to-registry: true
 
       - name: Upload Release Assets
         if: github.event_name == 'workflow_dispatch' && inputs.release
