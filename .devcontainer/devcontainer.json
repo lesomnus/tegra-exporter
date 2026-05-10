@@ -7,7 +7,7 @@
 		"vscode": {
 			"extensions": [
 				"golang.go",
-				"bufbuild.vscode-buf",
+				"yzhang.markdown-all-in-one",
 				"streetsidesoftware.code-spell-checker"
 			]
 		}
