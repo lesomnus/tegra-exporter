@@ -41,7 +41,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 
 
 
-FROM scratch AS app
+FROM busybox AS app
 
 COPY --from=build /app/a /tegra-exporter
 ENTRYPOINT ["/tegra-exporter"]

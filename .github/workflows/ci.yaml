@@ -25,6 +25,7 @@ jobs:
     permissions:
       contents: write
       packages: write
+      id-token: write
     env:
       TAG: edge
       BUILD_ID: r${{ github.run_id }}

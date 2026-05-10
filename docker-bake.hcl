@@ -21,6 +21,10 @@ target "test" {
   target = "test"
 }
 target "app" {
+  attest = [
+    "type=provenance,mode=max",
+    "type=sbom",
+  ]
   args = {
     BUILD_HASH = BUILD_HASH
     BUILD_DATE = BUILD_DATE
