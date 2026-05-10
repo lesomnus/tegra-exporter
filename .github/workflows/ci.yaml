@@ -40,16 +40,19 @@ jobs:
       - uses: docker/bake-action@v7
         with:
           targets: test
+          set: |
+            test.cache-from=type=gha,scope=build
+            test.cache-to=type=gha,scope=build,mode=max
 
       - uses: docker/bake-action@v7
         with:
           targets: app
           set: |
+            app.cache-from=type=gha,scope=build
+            app.cache-to=type=gha,scope=build,mode=max
             app.output=type=local,dest=./dist
             app.output=type=registry
 
-      - uses: actions/checkout@v6
-        if: github.event_name == 'workflow_dispatch' && inputs.release
       - name: Upload Release Assets
         if: github.event_name == 'workflow_dispatch' && inputs.release
         run: |
@@ -62,3 +65,4 @@ jobs:
           fi
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
