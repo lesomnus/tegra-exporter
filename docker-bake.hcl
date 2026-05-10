@@ -7,8 +7,11 @@ variable "REPO" {
 variable "BUILD_HASH" {
   default = "0000000000000000000000000000000000000000"
 }
+variable "BUILD_TIMESTAMP" {
+  default = "${timestamp()}"
+}
 variable "BUILD_DATE" {
-  default = "${formatdate("YYMMDD", timestamp())}"
+  default = "${formatdate("YYMMDD", BUILD_TIMESTAMP)}"
 }
 variable "BUILD_ID" {
   default = "r0"
@@ -22,6 +25,15 @@ target "app" {
     BUILD_HASH = BUILD_HASH
     BUILD_DATE = BUILD_DATE
     BUILD_ID   = BUILD_ID
+  }
+  labels = {
+    "org.opencontainers.image.title"       = "tegra-exporter"
+    "org.opencontainers.image.description" = "Reads tegrastats output and exports metrics via OpenTelemetry"
+    "org.opencontainers.image.url"         = "https://github.com/lesomnus/tegra-exporter"
+    "org.opencontainers.image.source"      = "https://github.com/lesomnus/tegra-exporter"
+    "org.opencontainers.image.revision"    = BUILD_HASH
+    "org.opencontainers.image.created"     = BUILD_TIMESTAMP
+    "org.opencontainers.image.version"     = "${BUILD_DATE}-${BUILD_ID}"
   }
   tags = [
     "${REPO}:${TAG}",

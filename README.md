@@ -6,22 +6,35 @@ Reads [`tegrastats`](https://docs.nvidia.com/jetson/archives/r38.4/DeveloperGuid
 
 ### Download binary from GitHub Releases
 
+```sh
+VERSION=260510 \
+curl -sSLO https://github.com/lesomnus/tegra-exporter/releases/download/${VERSION}/tegra-exporter \
+&& chmod +x tegra-exporter \
+&& ./tegra-exporter version
+```
+
 Pre-built binaries for `linux/arm64` are attached to each [GitHub Release](https://github.com/lesomnus/tegra-exporter/releases).
 
+### Docker
+
 ```sh
-VERSION=v0.1.0
-curl -sSLO https://github.com/lesomnus/tegra-exporter/releases/download/${VERSION}/tegra-exporter
-chmod +x tegra-exporter
-./tegra-exporter version
+docker run \
+  -v /sys:/sys:ro \
+  -v /sys/kernel/debug:/sys/kernel/debug:ro \
+  -v /dev:/dev \
+  -v /lib:/lib:ro \
+  -v /usr/bin/tegrastats:/usr/bin/tegrastats:ro \
+  -v $(pwd)/tegra-exporter.yaml:/tegra-exporter.yaml:ro \
+  -it --rm ghcr.io/lesomnus/tegra-exporter:260510
 ```
 
 ### Build from source
 
-Requires Go 1.26+.
-
 ```sh
 go install github.com/lesomnus/tegra-exporter@latest
 ```
+
+Requires Go 1.26+.
 
 ## Configuration
 
@@ -125,3 +138,4 @@ Engines with multiple instances carry an `index` attribute (`"0"`, `"1"`, ...).
 | `tegra.temperature`   | C    | `sensor`   | Temperature per thermal zone (e.g. `"cpu"`, `"soc2"`)                    |
 | `tegra.power.current` | mW   | `sensor`   | Current power consumption per rail (e.g. `"VDD_IN"`, `"VDD_CPU_GPU_CV"`) |
 | `tegra.power.average` | mW   | `sensor`   | Average power consumption per rail                                       |
+

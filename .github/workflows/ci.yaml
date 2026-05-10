@@ -48,6 +48,8 @@ jobs:
             app.output=type=local,dest=./dist
             app.output=type=registry
 
+      - uses: actions/checkout@v6
+        if: github.event_name == 'workflow_dispatch' && inputs.release
       - name: Upload Release Assets
         if: github.event_name == 'workflow_dispatch' && inputs.release
         run: |
