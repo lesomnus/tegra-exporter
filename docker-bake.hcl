@@ -10,6 +10,12 @@ variable "BUILD_HASH" {
 variable "BUILD_TIMESTAMP" {
   default = "${timestamp()}"
 }
+variable "BUILD_YY" {
+  default = "${formatdate("YY", BUILD_TIMESTAMP)}"
+}
+variable "BUILD_YYMM" {
+  default = "${formatdate("YYMM", BUILD_TIMESTAMP)}"
+}
 variable "BUILD_DATE" {
   default = "${formatdate("YYMMDD", BUILD_TIMESTAMP)}"
 }
@@ -42,6 +48,10 @@ target "app" {
   tags = [
     "${REPO}:${TAG}",
     "${REPO}:${BUILD_ID}",
+    "${REPO}:${BUILD_YY}",
+    "${REPO}:${BUILD_YY}-${BUILD_ID}",
+    "${REPO}:${BUILD_YYMM}",
+    "${REPO}:${BUILD_YYMM}-${BUILD_ID}",
     "${REPO}:${BUILD_DATE}",
     "${REPO}:${BUILD_DATE}-${BUILD_ID}",
     "${REPO}:${BUILD_HASH}",

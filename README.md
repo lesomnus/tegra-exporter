@@ -9,8 +9,8 @@ Reads [`tegrastats`](https://docs.nvidia.com/jetson/archives/r38.4/DeveloperGuid
 ```sh
 VERSION=260510 \
 curl -sSLO https://github.com/lesomnus/tegra-exporter/releases/download/${VERSION}/tegra-exporter \
-&& chmod +x tegra-exporter \
-&& ./tegra-exporter version
+  && chmod +x tegra-exporter \
+  && ./tegra-exporter version
 ```
 
 Pre-built binaries for `linux/arm64` are attached to each [GitHub Release](https://github.com/lesomnus/tegra-exporter/releases).
