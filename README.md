@@ -38,35 +38,44 @@ Requires Go 1.26+.
 
 ## Configuration
 
-`tegra-exporter` looks for a config file named `tegra-exporter.yaml` (or `.yml`) in the current working directory. If no config file is found, it runs with defaults: executes `tegrastats` and prints metrics to stdout.
-
 ```yaml
-# Command to run instead of tegrastats.
-# Useful for testing with a script that emits tegrastats-formatted output.
 stat: ["tegrastats"]
 
 otel:
   exporters:
     pretty: {}
-    otlp/my-backend:
-      endpoint: localhost:4317
-      tls:
-        insecure: true
     prometheus/local:
-      endpoint: localhost:8888
+      endpoint: ":8888"
       namespace: tegra_exporter
 
   providers:
     meter:
       exporters:
-        - otlp/my-backend
         - prometheus/local
     logger:
       exporters:
         - pretty
 ```
 
-When no `providers` are configured, metrics are printed to stdout via the `pretty` exporter.
+`tegra-exporter` looks for a config file named `tegra-exporter.yaml` (or `.yml`) in the current working directory.
+If no config file is found, it uses default config shown above.
+
+```yaml
+otel:
+  exporters:
+    otlp/local:
+      endpoint: localhost:4317
+      tls:
+        insecure: true
+
+  providers:
+    meter:
+      processors:
+        - resource/tegra-exporter
+```
+
+`otlp` exporter can be used to push metrics to a remote OpenTelemetry Collector.
+
 
 ## Metrics
 
