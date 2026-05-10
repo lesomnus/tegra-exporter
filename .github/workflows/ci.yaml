@@ -12,38 +12,51 @@ on:
       - "go.mod"
       - "go.sum"
       - "main.go"
-  release:
-    types: [published]
+  workflow_dispatch:
+    inputs:
+      release:
+        description: "Create a release"
+        type: boolean
+        default: false
 
 jobs:
   build:
     runs-on: ubuntu-24.04-arm
     permissions:
       contents: write
+      packages: write
     env:
+      TAG: edge
       BUILD_ID: r${{ github.run_id }}
-      BUILD_VERSION: ${{ github.event_name == 'release' && github.event.release.tag_name || '' }}
+      BUILD_HASH: ${{ github.sha }}
     steps:
-      - uses: actions/checkout@v6
-      - run: |
-          ./scripts/gen-version-file.sh
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
 
       - uses: docker/setup-buildx-action@v4
       - uses: docker/bake-action@v7
         with:
-          source: .
           targets: test
+
       - uses: docker/bake-action@v7
         with:
-          source: .
           targets: app
           set: |
             app.output=type=local,dest=./dist
+            app.output=type=registry
 
       - name: Upload Release Assets
-        if: github.event_name == 'release'
+        if: github.event_name == 'workflow_dispatch' && inputs.release
         run: |
+          RELEASE_TAG=$(date -u +'%y%m%d')
           ./dist/tegra-exporter version
-          gh release upload ${{ github.event.release.tag_name }} ./dist/tegra-exporter
+          if gh release view "$RELEASE_TAG" &>/dev/null; then
+            gh release upload "$RELEASE_TAG" ./dist/tegra-exporter --clobber
+          else
+            gh release create "$RELEASE_TAG" --title "$RELEASE_TAG" ./dist/tegra-exporter
+          fi
         env:
           GH_TOKEN: ${{ github.token }}

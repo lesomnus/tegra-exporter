@@ -1,5 +1,7 @@
 *
 !cmd
+cmd/version/version.g.go
+!scripts
 !stats
 !go.mod
 !go.sum

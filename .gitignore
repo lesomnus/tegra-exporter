@@ -1,4 +1,4 @@
-cmd/version.g.go
+cmd/version/version.g.go
 dist
 go.work
 go.work.sum

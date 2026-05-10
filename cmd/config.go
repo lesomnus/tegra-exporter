@@ -4,9 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"log/slog"
+	"os"
 
+	"github.com/goccy/go-yaml"
 	"github.com/lesomnus/mkot"
 	"github.com/lesomnus/otx"
+	"github.com/lesomnus/otx/log"
+	"github.com/lesomnus/tegra-exporter/cmd/version"
+	"github.com/lesomnus/xli"
+	"go.opentelemetry.io/otel/attribute"
 	nooplog "go.opentelemetry.io/otel/log/noop"
 	noopmetric "go.opentelemetry.io/otel/metric/noop"
 	nooptrace "go.opentelemetry.io/otel/trace/noop"
@@ -14,12 +22,69 @@ import (
 	_ "github.com/lesomnus/mkot/otlp"
 	"github.com/lesomnus/mkot/pretty"
 	_ "github.com/lesomnus/mkot/pretty"
+	"github.com/lesomnus/mkot/prometheus"
 	_ "github.com/lesomnus/mkot/prometheus"
 )
+
+func NewCmdConfig() *xli.Command {
+	return &xli.Command{
+		Name: "config",
+		Handler: xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
+			c, rp, err := readConfig()
+			if err != nil {
+				return fmt.Errorf("read config: %w", err)
+			}
+
+			ctx, _, err = c.Otel.Build(ctx)
+			if err != nil {
+				return fmt.Errorf("build otel: %w", err)
+			}
+
+			l := log.From(ctx)
+			l.Info("config loaded", slog.String("path", rp))
+
+			return yaml.NewEncoder(cmd).Encode(c)
+		}),
+	}
+}
 
 type Config struct {
 	Stat []string
 	Otel OtelConfig
+}
+
+func readConfig() (*Config, string, error) {
+	path_to_lookup := []string{
+		"tegra-exporter.yaml",
+		"tegra-exporter.yml",
+	}
+
+	var (
+		r  io.Reader
+		rp string
+	)
+	for _, rp = range path_to_lookup {
+		f, err := os.Open(rp)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				continue
+			}
+			return nil, "", fmt.Errorf("open config file: %w", err)
+		}
+		r = f
+		break
+	}
+
+	var c Config
+	if r != nil {
+		if err := yaml.NewDecoder(r).Decode(&c); err != nil {
+			return nil, "", fmt.Errorf("decode config: %w", err)
+		}
+	}
+	if err := c.Evaluate(); err != nil {
+		return nil, "", fmt.Errorf("evaluate config: %w", err)
+	}
+	return &c, rp, nil
 }
 
 func (c *Config) Evaluate() error {
@@ -39,7 +104,6 @@ func (c *OtelConfig) Build(ctx context.Context) (context.Context, *otx.Otx, erro
 		otc = &c.Config
 	}
 
-	const ServiceResourceId mkot.Id = "resource/tegra-exporter"
 	if otc.Processors == nil {
 		otc.Processors = map[mkot.Id]mkot.ProcessorConfig{}
 	}
@@ -52,25 +116,36 @@ func (c *OtelConfig) Build(ctx context.Context) (context.Context, *otx.Otx, erro
 	if otc.Providers == nil {
 		otc.Providers = map[mkot.Id]*mkot.ProviderConfig{}
 	}
-	// otc.Processors[ServiceResourceId] = &mkot.Resource{
-	// 	Attributes: []mkot.Attr{
-	// 		{Key: "service.name", Value: attribute.StringValue("tegra-exporter")},
-	// 		{Key: "service.version", Value: attribute.StringValue("0.0.0")},
-	// 	},
-	// }
-	if len(otc.Providers) == 0 {
-		id := mkot.Id("pretty")
-		if _, ok := otc.Exporters[id]; !ok {
-			otc.Exporters[id] = pretty.ExporterConfig{}
-		}
-		otc.Providers["logger"] = &mkot.ProviderConfig{
-			Exporters: []mkot.Id{id},
+
+	const ServiceResourceId mkot.Id = "resource/tegra-exporter"
+	if _, ok := otc.Processors[ServiceResourceId]; !ok {
+		otc.Processors[ServiceResourceId] = &mkot.Resource{
+			Attributes: []mkot.Attr{
+				{Key: "service.name", Value: attribute.StringValue("tegra-exporter")},
+				{Key: "service.version", Value: attribute.StringValue(version.Get().Version)},
+			},
 		}
 	}
-
-	// for k := range otc.Providers {
-	// 	otc.Providers[k].Processors = append(otc.Providers[k].Processors, ServiceResourceId)
-	// }
+	if _, ok := otc.Exporters["pretty"]; !ok {
+		otc.Exporters["pretty"] = pretty.ExporterConfig{}
+	}
+	if _, ok := otc.Exporters["prometheus/local"]; !ok {
+		otc.Exporters["prometheus/local"] = &prometheus.ExporterConfig{
+			Namespace: "tegra_exporter",
+			Endpoint:  ":8888",
+		}
+	}
+	if _, ok := otc.Providers["logger"]; !ok {
+		otc.Providers["logger"] = &mkot.ProviderConfig{
+			Exporters: []mkot.Id{"pretty"},
+		}
+	}
+	if _, ok := otc.Providers["meter"]; !ok {
+		otc.Providers["meter"] = &mkot.ProviderConfig{
+			Exporters:  []mkot.Id{"prometheus/local"},
+			Processors: []mkot.Id{ServiceResourceId},
+		}
+	}
 
 	resolver := mkot.Make(ctx, otc)
 

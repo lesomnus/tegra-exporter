@@ -1,3 +1,7 @@
+ARG BUILD_HASH="0000000000000000000000000000000000000000"
+ARG BUILD_DATE="YYMMDD"
+ARG BUILD_ID="r0"
+
 FROM library/golang:1.26 AS base
 
 WORKDIR /app
@@ -19,6 +23,14 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 
 
 FROM base AS build
+
+ARG BUILD_HASH
+ARG BUILD_DATE
+ARG BUILD_ID
+RUN BUILD_HASH=${BUILD_HASH} \
+	BUILD_DATE=${BUILD_DATE} \
+	BUILD_ID=${BUILD_ID} \
+	./scripts/gen-version-file.sh
 
 RUN --mount=type=cache,target=/root/.cache/go-build \
 	go build \

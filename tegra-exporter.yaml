@@ -10,11 +10,13 @@ otel:
       sending_queue:
         enabled: false
     prometheus/local:
-      endpoint: localhost:8888
+      endpoint: ":8888"
       namespace: tegra_exporter
 
   providers:
     meter:
+      processors:
+        - resource/tegra-exporter
       exporters:
         - otlp/local
         - prometheus/local

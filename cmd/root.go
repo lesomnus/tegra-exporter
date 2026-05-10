@@ -4,12 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
-	"os"
 	"strings"
 
-	"github.com/goccy/go-yaml"
 	"github.com/lesomnus/otx"
 	"github.com/lesomnus/otx/log"
 	"github.com/lesomnus/tegra-exporter/stats"
@@ -19,40 +16,16 @@ import (
 )
 
 func NewCmdRoot() *xli.Command {
-	path_to_lookup := []string{
-		"tegra-exporter.yaml",
-		"tegra-exporter.yml",
-	}
 	return &xli.Command{
 		Name: "tegra-exporter",
 		Commands: xli.Commands{
 			NewCmdVersion(),
+			NewCmdConfig(),
 		},
 		Handler: xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
-			var (
-				r  io.Reader
-				rp string
-			)
-			for _, rp = range path_to_lookup {
-				f, err := os.Open(rp)
-				if err != nil {
-					if errors.Is(err, os.ErrNotExist) {
-						continue
-					}
-					return fmt.Errorf("open config file: %w", err)
-				}
-				r = f
-				break
-			}
-
-			var c Config
-			if r != nil {
-				if err := yaml.NewDecoder(r).Decode(&c); err != nil {
-					return fmt.Errorf("decode config: %w", err)
-				}
-			}
-			if err := c.Evaluate(); err != nil {
-				return fmt.Errorf("evaluate config: %w", err)
+			c, rp, err := readConfig()
+			if err != nil {
+				return fmt.Errorf("read config: %w", err)
 			}
 
 			ctx, otx, err := c.Otel.Build(ctx)
