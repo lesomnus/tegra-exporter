@@ -9,11 +9,15 @@ otel:
         insecure: true
       sending_queue:
         enabled: false
+    prometheus/local:
+      endpoint: localhost:8888
+      namespace: tegra_exporter
 
   providers:
     meter:
       exporters:
         - otlp/local
+        - prometheus/local
     logger:
       exporters:
         - pretty

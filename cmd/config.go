@@ -14,6 +14,7 @@ import (
 	_ "github.com/lesomnus/mkot/otlp"
 	"github.com/lesomnus/mkot/pretty"
 	_ "github.com/lesomnus/mkot/pretty"
+	_ "github.com/lesomnus/mkot/prometheus"
 )
 
 type Config struct {

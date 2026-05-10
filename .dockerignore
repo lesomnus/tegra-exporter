@@ -1,0 +1,6 @@
+*
+!cmd
+!stats
+!go.mod
+!go.sum
+!main.go

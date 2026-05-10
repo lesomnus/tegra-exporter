@@ -8,9 +8,6 @@ services:
 
     privileged: true
 
-    environment:
-      - PKG_CONFIG_PATH=/workspace/.pc:${PKG_CONFIG_PATH}
-
     volumes:
       - type: bind
         source: ..
