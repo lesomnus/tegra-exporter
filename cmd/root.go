@@ -25,6 +25,9 @@ func NewCmdRoot() *xli.Command {
 	}
 	return &xli.Command{
 		Name: "tegra-exporter",
+		Commands: xli.Commands{
+			NewCmdVersion(),
+		},
 		Handler: xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
 			var (
 				r  io.Reader

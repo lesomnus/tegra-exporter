@@ -11,9 +11,13 @@ variable "BUILD_ID" {
   default = "r0"
 }
 
+target "test" {
+  target = "test"
+}
 target "app" {
   tags = [
     "${REPO}:${TAG}",
     "${REPO}:${BUILD_ID}",
   ]
+  target = "app"
 }
