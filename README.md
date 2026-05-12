@@ -148,3 +148,13 @@ Engines with multiple instances carry an `index` attribute (`"0"`, `"1"`, ...).
 | `tegra.power.current` | mW   | `sensor`   | Current power consumption per rail (e.g. `"VDD_IN"`, `"VDD_CPU_GPU_CV"`) |
 | `tegra.power.average` | mW   | `sensor`   | Average power consumption per rail                                       |
 
+## Appendix
+
+### Fake stats
+
+If the `stat` is set to `["$fake"]`, `tegra-exporter` generates fake metrics with random walk.
+This can be useful for testing and debugging.
+
+### What is the non-arm64 binary for?
+
+For testing on non-Tegra platforms.

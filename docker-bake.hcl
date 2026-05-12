@@ -26,16 +26,26 @@ variable "BUILD_ID" {
 target "test" {
   target = "test"
 }
-target "app" {
-  attest = [
-    "type=provenance,mode=max",
-    "type=sbom",
-  ]
+target "build" {
+  target = "build"
   args = {
     BUILD_HASH = BUILD_HASH
     BUILD_DATE = BUILD_DATE
     BUILD_ID   = BUILD_ID
   }
+  output = [{
+    type = "local"
+    dest = "build"
+  }]
+}
+target "app" {
+  target = "app"
+  context = "./build"
+  dockerfile = "../Dockerfile"
+  attest = [
+    "type=provenance,mode=max",
+    "type=sbom",
+  ]
   labels = {
     "org.opencontainers.image.title"       = "tegra-exporter"
     "org.opencontainers.image.description" = "Reads tegrastats output and exports metrics via OpenTelemetry"
@@ -56,5 +66,4 @@ target "app" {
     "${REPO}:${BUILD_DATE}-${BUILD_ID}",
     "${REPO}:${BUILD_HASH}",
   ]
-  target = "app"
 }

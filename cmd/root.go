@@ -46,20 +46,28 @@ func NewCmdRoot() *xli.Command {
 			l.Info("config loaded", slog.String("path", rp))
 			l.Info("executing stats", slog.String("args", strings.Join(c.Stat, " ")))
 
-			args := []string{}
-			if len(c.Stat) > 1 {
-				args = c.Stat[1:]
-			}
-			execute := stats.Execute(c.Stat[0], args...)
-			s := stats.NewSupervisor(ctx, execute)
-			if err := s.Start(); err != nil {
-				return fmt.Errorf("start supervisor: %w", err)
+			var listener stats.Listener
+			if len(c.Stat) == 1 && c.Stat[0] == "$fake" {
+				l.Warn("use fake stats")
+				listener = stats.NewFake()
+			} else {
+				args := []string{}
+				if len(c.Stat) > 1 {
+					args = c.Stat[1:]
+				}
+				execute := stats.Execute(c.Stat[0], args...)
+				s := stats.NewSupervisor(ctx, execute)
+				if err := s.Start(); err != nil {
+					return fmt.Errorf("start supervisor: %w", err)
+				}
+				defer s.Wait()
+				listener = s
 			}
 
-			stop := s.Listen(collector)
+			stop := listener.Listen(collector)
 			defer stop()
 
-			s.Wait()
+			<-ctx.Done()
 			return next(ctx)
 		}),
 	}

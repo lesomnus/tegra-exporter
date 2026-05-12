@@ -1,4 +1,4 @@
 cmd/version/version.g.go
-dist
+build
 go.work
 go.work.sum

@@ -1,4 +1,5 @@
-stat: ["bash", "./scripts/date.sh"]
+# stat: ["bash", "./scripts/date.sh"]
+stat: [$fake]
 
 otel:
   exporters:

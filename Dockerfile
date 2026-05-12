@@ -1,6 +1,7 @@
 ARG BUILD_HASH="0000000000000000000000000000000000000000"
 ARG BUILD_DATE="YYMMDD"
 ARG BUILD_ID="r0"
+ARG TARGETARCH
 
 FROM library/golang:1.26 AS base
 
@@ -22,7 +23,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 
 
 
-FROM base AS build
+FROM base AS builder
 
 ARG BUILD_HASH
 ARG BUILD_DATE
@@ -32,16 +33,25 @@ RUN BUILD_HASH=${BUILD_HASH} \
 	BUILD_ID=${BUILD_ID} \
 	./scripts/gen-version-file.sh
 
+SHELL ["/bin/bash", "-c"]
 RUN --mount=type=cache,target=/root/.cache/go-build \
-	go build \
-		-trimpath \
-		-ldflags="-s -w" \
-		-o a . \
-	&& ./a version
+	flags=(-trimpath -ldflags="-s -w") \
+	&& GOARCH=arm64 go build "${flags[@]}" -o tegra-exporter-arm64 . \
+	&& GOARCH=amd64 go build "${flags[@]}" -o tegra-exporter-amd64 .
+
+FROM scratch AS build
+
+COPY --from=builder \
+	/app/tegra-exporter-arm64 \
+	/app/tegra-exporter-amd64 \
+	/
 
 
 
 FROM busybox AS app
 
-COPY --from=build /app/a /tegra-exporter
+SHELL ["/bin/sh", "-c"]
+ARG TARGETARCH
+COPY ./tegra-exporter-${TARGETARCH} /tegra-exporter
+RUN /tegra-exporter version
 ENTRYPOINT ["/tegra-exporter"]
