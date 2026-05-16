@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"time"
 
 	"github.com/goccy/go-yaml"
 	"github.com/lesomnus/mkot"
@@ -49,8 +50,9 @@ func NewCmdConfig() *xli.Command {
 }
 
 type Config struct {
-	Stat []string
-	Otel OtelConfig
+	Stat   []string
+	Health HealthConfig
+	Otel   OtelConfig
 }
 
 func readConfig() (*Config, string, error) {
@@ -90,6 +92,22 @@ func readConfig() (*Config, string, error) {
 func (c *Config) Evaluate() error {
 	if len(c.Stat) == 0 {
 		c.Stat = []string{"tegrastats"}
+	}
+	return c.Health.Evaluate()
+}
+
+type HealthConfig struct {
+	Enabled      *bool
+	StaleTimeout time.Duration `yaml:"stale_timeout"`
+	Endpoint     string
+}
+
+func (c *HealthConfig) Evaluate() error {
+	if c.StaleTimeout == 0 {
+		c.StaleTimeout = 10 * time.Second
+	}
+	if c.Endpoint == "" {
+		c.Endpoint = ":8081"
 	}
 	return nil
 }

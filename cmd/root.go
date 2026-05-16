@@ -5,7 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"strings"
+	"sync/atomic"
+	"time"
 
 	"github.com/lesomnus/otx"
 	"github.com/lesomnus/otx/log"
@@ -13,6 +16,7 @@ import (
 	"github.com/lesomnus/xli"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
+	"golang.org/x/sync/errgroup"
 )
 
 func NewCmdRoot() *xli.Command {
@@ -64,10 +68,50 @@ func NewCmdRoot() *xli.Command {
 				listener = s
 			}
 
+			eg, ctx := errgroup.WithContext(ctx)
+
+			if c.Health.Enabled != nil && !*c.Health.Enabled {
+				l.Warn("health check disabled")
+			} else {
+				l.Info("health check enabled",
+					slog.String("endpoint", c.Health.Endpoint),
+					slog.String("stale_timeout", c.Health.StaleTimeout.String()),
+				)
+
+				var t atomic.Pointer[time.Time]
+				t.Store(new(time.Time))
+				collector_ := collector
+				collector = func(v *stats.Stat) {
+					t.Store(new(time.Now()))
+					collector_(v)
+				}
+
+				mux := http.NewServeMux()
+				mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+					w.WriteHeader(http.StatusOK)
+					fmt.Fprintln(w, "ok")
+				})
+				mux.HandleFunc("/readyz", func(w http.ResponseWriter, r *http.Request) {
+					if time.Since(*t.Load()) > c.Health.StaleTimeout {
+						http.Error(w, "unhealthy", http.StatusInternalServerError)
+						return
+					}
+
+					w.WriteHeader(http.StatusOK)
+					fmt.Fprintln(w, "ok")
+				})
+				srv := &http.Server{
+					Addr:    c.Health.Endpoint,
+					Handler: mux,
+				}
+				eg.Go(srv.ListenAndServe)
+				defer srv.Shutdown(ctx)
+			}
+
 			stop := listener.Listen(collector)
 			defer stop()
 
-			<-ctx.Done()
+			eg.Wait()
 			return next(ctx)
 		}),
 	}
