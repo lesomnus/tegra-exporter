@@ -1,5 +1,5 @@
 # stat: ["bash", "./scripts/date.sh"]
-# stat: [$fake]
+stat: [$fake]
 
 health:
   stale_timeout: 10s

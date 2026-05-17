@@ -133,7 +133,7 @@ func Parse(text string, stat *Stat) error {
 			}
 			stat.Ape = Ape{Freq: uint(freq)}
 
-		case tok == "OFA":
+		case tok == "OFA" || tok == "OFA_FREQ":
 			pct, freq, off, err := parsePercentFreq(sc)
 			if err != nil {
 				return fmt.Errorf("OFA: %w", err)
@@ -231,26 +231,32 @@ func parseDateTime(sc *scanner) (time.Time, error) {
 	if len(time_str) != 8 || time_str[2] != ':' || time_str[5] != ':' {
 		return time.Time{}, fmt.Errorf("invalid time: %s", time_str)
 	}
+
 	month, err := strconv.Atoi(date_str[0:2])
 	if err != nil {
 		return time.Time{}, fmt.Errorf("month: %w", err)
 	}
+
 	day, err := strconv.Atoi(date_str[3:5])
 	if err != nil {
 		return time.Time{}, fmt.Errorf("day: %w", err)
 	}
+
 	year, err := strconv.Atoi(date_str[6:10])
 	if err != nil {
 		return time.Time{}, fmt.Errorf("year: %w", err)
 	}
+
 	hour, err := strconv.Atoi(time_str[0:2])
 	if err != nil {
 		return time.Time{}, fmt.Errorf("hour: %w", err)
 	}
+
 	minute, err := strconv.Atoi(time_str[3:5])
 	if err != nil {
 		return time.Time{}, fmt.Errorf("minute: %w", err)
 	}
+
 	second, err := strconv.Atoi(time_str[6:8])
 	if err != nil {
 		return time.Time{}, fmt.Errorf("second: %w", err)
@@ -263,6 +269,7 @@ func parseRam(sc *scanner) (Ram, error) {
 	if !ok {
 		return Ram{}, fmt.Errorf("unexpected end")
 	}
+
 	sc.next() // "(lfb"
 	lfb_str, ok := sc.next()
 	if !ok {
@@ -274,23 +281,28 @@ func parseRam(sc *scanner) (Ram, error) {
 	if slash < 0 || m <= slash {
 		return Ram{}, fmt.Errorf("invalid size: %s", size_str)
 	}
+
 	in_use, err := strconv.ParseUint(size_str[:slash], 10, 64)
 	if err != nil {
 		return Ram{}, fmt.Errorf("in use: %w", err)
 	}
+
 	total, err := strconv.ParseUint(size_str[slash+1:m], 10, 64)
 	if err != nil {
 		return Ram{}, fmt.Errorf("total: %w", err)
 	}
+
 	x := strings.IndexByte(lfb_str, 'x')
 	lfb_m := strings.IndexByte(lfb_str, 'M')
 	if x < 0 || lfb_m <= x {
 		return Ram{}, fmt.Errorf("invalid lfb: %s", lfb_str)
 	}
+
 	lfb_count, err := strconv.ParseUint(lfb_str[:x], 10, 64)
 	if err != nil {
 		return Ram{}, fmt.Errorf("lfb count: %w", err)
 	}
+
 	lfb_size, err := strconv.ParseUint(lfb_str[x+1:lfb_m], 10, 64)
 	if err != nil {
 		return Ram{}, fmt.Errorf("lfb size: %w", err)
@@ -314,18 +326,22 @@ func parseSwap(sc *scanner) (Swap, error) {
 	if slash < 0 || m <= slash {
 		return Swap{}, fmt.Errorf("invalid size: %s", size_str)
 	}
+
 	in_use, err := strconv.ParseUint(size_str[:slash], 10, 64)
 	if err != nil {
 		return Swap{}, fmt.Errorf("in use: %w", err)
 	}
+
 	total, err := strconv.ParseUint(size_str[slash+1:m], 10, 64)
 	if err != nil {
 		return Swap{}, fmt.Errorf("total: %w", err)
 	}
+
 	cached_num, _, ok := strings.Cut(cached_str, "M")
 	if !ok {
 		return Swap{}, fmt.Errorf("invalid cached: %s", cached_str)
 	}
+
 	cached, err := strconv.ParseUint(cached_num, 10, 64)
 	if err != nil {
 		return Swap{}, fmt.Errorf("cached: %w", err)
@@ -349,18 +365,22 @@ func parseIram(sc *scanner) (IRam, error) {
 	if slash < 0 || k <= slash {
 		return IRam{}, fmt.Errorf("invalid size: %s", size_str)
 	}
+
 	in_use, err := strconv.ParseUint(size_str[:slash], 10, 64)
 	if err != nil {
 		return IRam{}, fmt.Errorf("in use: %w", err)
 	}
+
 	total, err := strconv.ParseUint(size_str[slash+1:k], 10, 64)
 	if err != nil {
 		return IRam{}, fmt.Errorf("total: %w", err)
 	}
+
 	lfb_num, _, ok := strings.Cut(lfb_str, "k")
 	if !ok {
 		return IRam{}, fmt.Errorf("invalid lfb: %s", lfb_str)
 	}
+
 	lfb_size, err := strconv.ParseUint(lfb_num, 10, 64)
 	if err != nil {
 		return IRam{}, fmt.Errorf("lfb size: %w", err)
@@ -399,10 +419,12 @@ func parseCpu(sc *scanner) ([]Cpu, error) {
 			if pct_end > 0 && part[pct_end-1] == '%' {
 				pct_end--
 			}
+
 			v, err := strconv.ParseUint(part[:pct_end], 10, 64)
 			if err != nil {
 				return nil, fmt.Errorf("percent: %w", err)
 			}
+
 			cpus = append(cpus, Cpu{Percent: uint(v), Freq: uint(freq)})
 		}
 	} else {
@@ -506,9 +528,13 @@ func parseGr3d(sc *scanner) (Gr3d, bool, error) {
 	if pct_end > 0 && s[pct_end-1] == '%' {
 		pct_end--
 	}
-	pct, err := strconv.ParseUint(s[:pct_end], 10, 64)
-	if err != nil {
-		return Gr3d{}, false, fmt.Errorf("percent: %w", err)
+	var pct uint64
+	if pct_end > 0 {
+		var err error
+		pct, err = strconv.ParseUint(s[:pct_end], 10, 64)
+		if err != nil {
+			return Gr3d{}, false, fmt.Errorf("percent: %w", err)
+		}
 	}
 
 	inner, _, ok := strings.Cut(s[at+2:], "]")
@@ -571,10 +597,12 @@ func parsePva(sc *scanner) (Pva, bool, error) {
 		if pct_end > 0 && part[pct_end-1] == '%' {
 			pct_end--
 		}
+
 		v, err := strconv.ParseUint(part[:pct_end], 10, 64)
 		if err != nil {
 			return Pva{}, false, fmt.Errorf("percent: %w", err)
 		}
+
 		percents = append(percents, uint(v))
 	}
 	return Pva{Percent: percents, Freq: uint(freq)}, false, nil

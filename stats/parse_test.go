@@ -159,4 +159,138 @@ func TestParse(t *testing.T) {
 		}
 		validate(t, tcs)
 	})
+
+	// R38 (release), REVISION: 4.0, GCID: 43443517, BOARD: generic, EABI: aarch64, DATE: Wed Dec 31 00:15:19 UTC 2025
+	// nvidia-l4t-core	38.4.0-20251230160601
+	t.Run("6.8.12", func(t *testing.T) {
+		tcs := []TestCase{
+			{
+				Text: `05-17-2026 10:00:32 RAM 4208/125773MB (lfb 31x4MB) SWAP 0/2048MB (cached 0MB) CPU [1%@972,0%@972,0%@972,0%@972,1%@972,0%@972,1%@972,1%@972,0%@972,0%@972,3%@972,0%@972,0%@972,1%@972] EMC_FREQ 0%@665 GR3D_FREQ @[0,0,0] NVENC0_FREQ @0 NVENC1_FREQ @0 NVDEC0_FREQ @0 NVDEC1_FREQ @0 NVJPG0_FREQ @0 VIC off OFA_FREQ @0 PVA0_FREQ off APE 300 cpu@34.468C tj@34.5C soc012@33.781C soc345@34.5C VDD_GPU 0mW/0mW VDD_CPU_SOC_MSS 4165mW/4165mW VIN_SYS_5V0 4126mW/4126mW`,
+				Stat: &stats.Stat{
+					Time: time.Date(2026, 5, 17, 10, 0, 32, 0, time.UTC),
+					Ram:  stats.Ram{InUse: 4208, Total: 125773, LfbCount: 31, LfbSize: 4},
+					Swap: stats.Swap{InUse: 0, Total: 2048, Cached: 0},
+					Cpus: []stats.Cpu{
+						{Percent: 1, Freq: 972},
+						{Percent: 0, Freq: 972},
+						{Percent: 0, Freq: 972},
+						{Percent: 0, Freq: 972},
+						{Percent: 1, Freq: 972},
+						{Percent: 0, Freq: 972},
+						{Percent: 1, Freq: 972},
+						{Percent: 1, Freq: 972},
+						{Percent: 0, Freq: 972},
+						{Percent: 0, Freq: 972},
+						{Percent: 3, Freq: 972},
+						{Percent: 0, Freq: 972},
+						{Percent: 0, Freq: 972},
+						{Percent: 1, Freq: 972},
+					},
+					Emc:   stats.Emc{Percent: 0, Freq: 665},
+					Gr3d:  stats.Gr3d{Percent: 0, Freq: []uint{0, 0, 0}},
+					NvEnc: []stats.NvEnc{{Percent: 0, Freq: 0}, {Percent: 0, Freq: 0}},
+					NvDec: []stats.NvDec{{Percent: 0, Freq: 0}, {Percent: 0, Freq: 0}},
+					NvJpg: []stats.NvJpg{{Percent: 0, Freq: 0}},
+					Ofa:   stats.Ofa{Percent: 0, Freq: 0},
+					Ape:   stats.Ape{Freq: 300},
+					Temp: []stats.Temp{
+						{Name: "cpu", Value: 34.468},
+						{Name: "tj", Value: 34.5},
+						{Name: "soc012", Value: 33.781},
+						{Name: "soc345", Value: 34.5},
+					},
+					Power: []stats.Power{
+						{Name: "VDD_GPU", Current: 0, Average: 0},
+						{Name: "VDD_CPU_SOC_MSS", Current: 4165, Average: 4165},
+						{Name: "VIN_SYS_5V0", Current: 4126, Average: 4126},
+					},
+				},
+			},
+			{
+				Text: `05-17-2026 10:00:33 RAM 4280/125773MB (lfb 29x4MB) SWAP 0/2048MB (cached 0MB) CPU [0%@972,0%@972,0%@972,0%@972,1%@972,0%@972,1%@972,0%@972,0%@2601,17%@2601,1%@972,9%@972,0%@972,1%@972] EMC_FREQ 0%@665 GR3D_FREQ @[0,0,0] NVENC0_FREQ @0 NVENC1_FREQ @0 NVDEC0_FREQ @0 NVDEC1_FREQ @0 NVJPG0_FREQ @0 VIC off OFA_FREQ @0 PVA0_FREQ off APE 300 cpu@35.25C tj@36.031C soc012@36.062C soc345@34.5C VDD_GPU 0mW/0mW VDD_CPU_SOC_MSS 4923mW/4544mW VIN_SYS_5V0 4327mW/4227mW`,
+				Stat: &stats.Stat{
+					Time: time.Date(2026, 5, 17, 10, 0, 33, 0, time.UTC),
+					Ram:  stats.Ram{InUse: 4280, Total: 125773, LfbCount: 29, LfbSize: 4},
+					Swap: stats.Swap{InUse: 0, Total: 2048, Cached: 0},
+					Cpus: []stats.Cpu{
+						{Percent: 0, Freq: 972},
+						{Percent: 0, Freq: 972},
+						{Percent: 0, Freq: 972},
+						{Percent: 0, Freq: 972},
+						{Percent: 1, Freq: 972},
+						{Percent: 0, Freq: 972},
+						{Percent: 1, Freq: 972},
+						{Percent: 0, Freq: 972},
+						{Percent: 0, Freq: 2601},
+						{Percent: 17, Freq: 2601},
+						{Percent: 1, Freq: 972},
+						{Percent: 9, Freq: 972},
+						{Percent: 0, Freq: 972},
+						{Percent: 1, Freq: 972},
+					},
+					Emc:   stats.Emc{Percent: 0, Freq: 665},
+					Gr3d:  stats.Gr3d{Percent: 0, Freq: []uint{0, 0, 0}},
+					NvEnc: []stats.NvEnc{{Percent: 0, Freq: 0}, {Percent: 0, Freq: 0}},
+					NvDec: []stats.NvDec{{Percent: 0, Freq: 0}, {Percent: 0, Freq: 0}},
+					NvJpg: []stats.NvJpg{{Percent: 0, Freq: 0}},
+					Ofa:   stats.Ofa{Percent: 0, Freq: 0},
+					Ape:   stats.Ape{Freq: 300},
+					Temp: []stats.Temp{
+						{Name: "cpu", Value: 35.25},
+						{Name: "tj", Value: 36.031},
+						{Name: "soc012", Value: 36.062},
+						{Name: "soc345", Value: 34.5},
+					},
+					Power: []stats.Power{
+						{Name: "VDD_GPU", Current: 0, Average: 0},
+						{Name: "VDD_CPU_SOC_MSS", Current: 4923, Average: 4544},
+						{Name: "VIN_SYS_5V0", Current: 4327, Average: 4227},
+					},
+				},
+			},
+			{
+				Text: `05-17-2026 10:00:34 RAM 4309/125773MB (lfb 23x4MB) SWAP 0/2048MB (cached 0MB) CPU [9%@972,2%@972,1%@972,0%@972,2%@972,11%@972,9%@972,17%@972,1%@972,20%@972,2%@972,2%@972,16%@972,3%@972] EMC_FREQ 1%@665 GR3D_FREQ @[0,0,0] NVENC0_FREQ @0 NVENC1_FREQ @0 NVDEC0_FREQ @0 NVDEC1_FREQ @0 NVJPG0_FREQ @0 VIC off OFA_FREQ @0 PVA0_FREQ off APE 300 cpu@34.468C tj@34.468C soc012@33.843C soc345@34.468C VDD_GPU 0mW/0mW VDD_CPU_SOC_MSS 4544mW/4544mW VIN_SYS_5V0 4428mW/4294mW`,
+				Stat: &stats.Stat{
+					Time: time.Date(2026, 5, 17, 10, 0, 34, 0, time.UTC),
+					Ram:  stats.Ram{InUse: 4309, Total: 125773, LfbCount: 23, LfbSize: 4},
+					Swap: stats.Swap{InUse: 0, Total: 2048, Cached: 0},
+					Cpus: []stats.Cpu{
+						{Percent: 9, Freq: 972},
+						{Percent: 2, Freq: 972},
+						{Percent: 1, Freq: 972},
+						{Percent: 0, Freq: 972},
+						{Percent: 2, Freq: 972},
+						{Percent: 11, Freq: 972},
+						{Percent: 9, Freq: 972},
+						{Percent: 17, Freq: 972},
+						{Percent: 1, Freq: 972},
+						{Percent: 20, Freq: 972},
+						{Percent: 2, Freq: 972},
+						{Percent: 2, Freq: 972},
+						{Percent: 16, Freq: 972},
+						{Percent: 3, Freq: 972},
+					},
+					Emc:   stats.Emc{Percent: 1, Freq: 665},
+					Gr3d:  stats.Gr3d{Percent: 0, Freq: []uint{0, 0, 0}},
+					NvEnc: []stats.NvEnc{{Percent: 0, Freq: 0}, {Percent: 0, Freq: 0}},
+					NvDec: []stats.NvDec{{Percent: 0, Freq: 0}, {Percent: 0, Freq: 0}},
+					NvJpg: []stats.NvJpg{{Percent: 0, Freq: 0}},
+					Ofa:   stats.Ofa{Percent: 0, Freq: 0},
+					Ape:   stats.Ape{Freq: 300},
+					Temp: []stats.Temp{
+						{Name: "cpu", Value: 34.468},
+						{Name: "tj", Value: 34.468},
+						{Name: "soc012", Value: 33.843},
+						{Name: "soc345", Value: 34.468},
+					},
+					Power: []stats.Power{
+						{Name: "VDD_GPU", Current: 0, Average: 0},
+						{Name: "VDD_CPU_SOC_MSS", Current: 4544, Average: 4544},
+						{Name: "VIN_SYS_5V0", Current: 4428, Average: 4294},
+					},
+				},
+			},
+		}
+		validate(t, tcs)
+	})
 }
