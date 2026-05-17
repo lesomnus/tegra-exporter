@@ -11,6 +11,7 @@ require (
 	github.com/lesomnus/otx v0.0.0-20260411134633-a35e9d32c8ef
 	github.com/lesomnus/signals v0.0.0-20260314173627-c9944ee5bf14
 	github.com/lesomnus/xli v0.0.0-20260415201908-e5f4624a24b7
+	github.com/lesomnus/z v0.0.0-20260413194448-6ba5ec4f036a
 	go.opentelemetry.io/otel v1.43.0
 	go.opentelemetry.io/otel/log v0.19.0
 	go.opentelemetry.io/otel/metric v1.43.0

@@ -14,6 +14,7 @@ import (
 	"github.com/lesomnus/otx/log"
 	"github.com/lesomnus/tegra-exporter/stats"
 	"github.com/lesomnus/xli"
+	"github.com/lesomnus/xli/flg"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"golang.org/x/sync/errgroup"
@@ -22,98 +23,91 @@ import (
 func NewCmdRoot() *xli.Command {
 	return &xli.Command{
 		Name: "tegra-exporter",
+
+		Flags: flg.Flags{
+			&flg.String{Name: "config", Alias: 'c'},
+		},
 		Commands: xli.Commands{
 			NewCmdVersion(),
 			NewCmdConfig(),
 		},
-		Handler: xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
-			c, rp, err := readConfig()
-			if err != nil {
-				return fmt.Errorf("read config: %w", err)
-			}
+		Handler: xli.Chain(
+			xli.OnRun(WithConfig(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
+				c := use_config.Must(ctx)
 
-			ctx, otx, err := c.Otel.Build(ctx)
-			if err != nil {
-				return fmt.Errorf("build otel: %w", err)
-			}
-			if err := otx.Start(ctx); err != nil {
-				return fmt.Errorf("start otel: %w", err)
-			}
-			defer otx.Shutdown(ctx)
-
-			collector, err := newCollector(ctx)
-			if err != nil {
-				return fmt.Errorf("create collector: %w", err)
-			}
-
-			l := log.From(ctx)
-			l.Info("config loaded", slog.String("path", rp))
-			l.Info("executing stats", slog.String("args", strings.Join(c.Stat, " ")))
-
-			var listener stats.Listener
-			if len(c.Stat) == 1 && c.Stat[0] == "$fake" {
-				l.Warn("use fake stats")
-				listener = stats.NewFake()
-			} else {
-				args := []string{}
-				if len(c.Stat) > 1 {
-					args = c.Stat[1:]
-				}
-				execute := stats.Execute(c.Stat[0], args...)
-				s := stats.NewSupervisor(ctx, execute)
-				if err := s.Start(); err != nil {
-					return fmt.Errorf("start supervisor: %w", err)
-				}
-				defer s.Wait()
-				listener = s
-			}
-
-			eg, ctx := errgroup.WithContext(ctx)
-
-			if c.Health.Enabled != nil && !*c.Health.Enabled {
-				l.Warn("health check disabled")
-			} else {
-				l.Info("health check enabled",
-					slog.String("endpoint", c.Health.Endpoint),
-					slog.String("stale_timeout", c.Health.StaleTimeout.String()),
-				)
-
-				var t atomic.Pointer[time.Time]
-				t.Store(new(time.Time))
-				collector_ := collector
-				collector = func(v *stats.Stat) {
-					t.Store(new(time.Now()))
-					collector_(v)
+				collector, err := newCollector(ctx)
+				if err != nil {
+					return fmt.Errorf("create collector: %w", err)
 				}
 
-				mux := http.NewServeMux()
-				mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-					w.WriteHeader(http.StatusOK)
-					fmt.Fprintln(w, "ok")
-				})
-				mux.HandleFunc("/readyz", func(w http.ResponseWriter, r *http.Request) {
-					if time.Since(*t.Load()) > c.Health.StaleTimeout {
-						http.Error(w, "unhealthy", http.StatusInternalServerError)
-						return
+				l := log.From(ctx)
+				l.Info("executing stats", slog.String("args", strings.Join(c.Stat, " ")))
+
+				var listener stats.Listener
+				if len(c.Stat) == 1 && c.Stat[0] == "$fake" {
+					l.Warn("use fake stats")
+					listener = stats.NewFake()
+				} else {
+					args := []string{}
+					if len(c.Stat) > 1 {
+						args = c.Stat[1:]
+					}
+					execute := stats.Execute(c.Stat[0], args...)
+					s := stats.NewSupervisor(ctx, execute)
+					if err := s.Start(); err != nil {
+						return fmt.Errorf("start supervisor: %w", err)
+					}
+					defer s.Wait()
+					listener = s
+				}
+
+				eg, ctx := errgroup.WithContext(ctx)
+
+				if c.Health.Enabled != nil && !*c.Health.Enabled {
+					l.Warn("health check disabled")
+				} else {
+					l.Info("health check enabled",
+						slog.String("endpoint", c.Health.Endpoint),
+						slog.String("stale_timeout", c.Health.StaleTimeout.String()),
+					)
+
+					var t atomic.Pointer[time.Time]
+					t.Store(new(time.Time))
+					collector_ := collector
+					collector = func(v *stats.Stat) {
+						t.Store(new(time.Now()))
+						collector_(v)
 					}
 
-					w.WriteHeader(http.StatusOK)
-					fmt.Fprintln(w, "ok")
-				})
-				srv := &http.Server{
-					Addr:    c.Health.Endpoint,
-					Handler: mux,
+					mux := http.NewServeMux()
+					mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+						w.WriteHeader(http.StatusOK)
+						fmt.Fprintln(w, "ok")
+					})
+					mux.HandleFunc("/readyz", func(w http.ResponseWriter, r *http.Request) {
+						if time.Since(*t.Load()) > c.Health.StaleTimeout {
+							http.Error(w, "unhealthy", http.StatusInternalServerError)
+							return
+						}
+
+						w.WriteHeader(http.StatusOK)
+						fmt.Fprintln(w, "ok")
+					})
+					srv := &http.Server{
+						Addr:    c.Health.Endpoint,
+						Handler: mux,
+					}
+					eg.Go(srv.ListenAndServe)
+					defer srv.Shutdown(ctx)
 				}
-				eg.Go(srv.ListenAndServe)
-				defer srv.Shutdown(ctx)
-			}
 
-			stop := listener.Listen(collector)
-			defer stop()
+				stop := listener.Listen(collector)
+				defer stop()
 
-			eg.Wait()
-			return next(ctx)
-		}),
+				eg.Wait()
+				return next(ctx)
+			})),
+		),
 	}
 }
 

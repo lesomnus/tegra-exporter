@@ -15,6 +15,8 @@ import (
 	"github.com/lesomnus/otx/log"
 	"github.com/lesomnus/tegra-exporter/cmd/version"
 	"github.com/lesomnus/xli"
+	"github.com/lesomnus/xli/flg"
+	"github.com/lesomnus/z"
 	"go.opentelemetry.io/otel/attribute"
 	nooplog "go.opentelemetry.io/otel/log/noop"
 	noopmetric "go.opentelemetry.io/otel/metric/noop"
@@ -27,38 +29,68 @@ import (
 	_ "github.com/lesomnus/mkot/prometheus"
 )
 
+var use_config = z.NewUse[*Config]()
+
+func WithConfig(h xli.HandlerFunc) xli.HandlerFunc {
+	return func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
+		if _, ok := use_config.From(ctx); ok {
+			return h(ctx, cmd, next)
+		}
+
+		path_to_lookup := []string{}
+		if p, ok := flg.Find[string](cmd, "config"); ok {
+			if _, err := os.Stat(p); err != nil {
+				return fmt.Errorf("stat config file: %w", err)
+			}
+			path_to_lookup = append(path_to_lookup, p)
+		}
+
+		c, err := readConfig(path_to_lookup...)
+		if err != nil {
+			return fmt.Errorf("read config: %w", err)
+		}
+
+		ctx, otx, err := c.Otel.Build(ctx)
+		if err != nil {
+			return fmt.Errorf("build otel: %w", err)
+		}
+		if err := otx.Start(ctx); err != nil {
+			return fmt.Errorf("start otel: %w", err)
+		}
+		defer otx.Shutdown(ctx)
+
+		l := log.From(ctx)
+		l.Info("config loaded", slog.String("path", c.path))
+
+		ctx = use_config.Into(ctx, c)
+		return h(ctx, cmd, next)
+	}
+}
+
 func NewCmdConfig() *xli.Command {
 	return &xli.Command{
 		Name: "config",
-		Handler: xli.OnRun(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
-			c, rp, err := readConfig()
-			if err != nil {
-				return fmt.Errorf("read config: %w", err)
-			}
-
-			ctx, _, err = c.Otel.Build(ctx)
-			if err != nil {
-				return fmt.Errorf("build otel: %w", err)
-			}
-
-			l := log.From(ctx)
-			l.Info("config loaded", slog.String("path", rp))
-
+		Handler: xli.OnRun(WithConfig(func(ctx context.Context, cmd *xli.Command, next xli.Next) error {
+			c := use_config.Must(ctx)
 			return yaml.NewEncoder(cmd).Encode(c)
-		}),
+		})),
 	}
 }
 
 type Config struct {
+	path string
+
 	Stat   []string
 	Health HealthConfig
 	Otel   OtelConfig
 }
 
-func readConfig() (*Config, string, error) {
-	path_to_lookup := []string{
-		"tegra-exporter.yaml",
-		"tegra-exporter.yml",
+func readConfig(path_to_lookup ...string) (*Config, error) {
+	if len(path_to_lookup) == 0 {
+		path_to_lookup = []string{
+			"tegra-exporter.yaml",
+			"tegra-exporter.yml",
+		}
 	}
 
 	var (
@@ -71,22 +103,26 @@ func readConfig() (*Config, string, error) {
 			if errors.Is(err, os.ErrNotExist) {
 				continue
 			}
-			return nil, "", fmt.Errorf("open config file: %w", err)
+			return nil, fmt.Errorf("open config file: %w", err)
 		}
 		r = f
 		break
 	}
 
 	var c Config
-	if r != nil {
+	if r == nil {
+		rp = "(default)"
+	} else {
 		if err := yaml.NewDecoder(r).Decode(&c); err != nil {
-			return nil, "", fmt.Errorf("decode config: %w", err)
+			return nil, fmt.Errorf("decode config: %w", err)
 		}
 	}
 	if err := c.Evaluate(); err != nil {
-		return nil, "", fmt.Errorf("evaluate config: %w", err)
+		return nil, fmt.Errorf("evaluate config: %w", err)
 	}
-	return &c, rp, nil
+
+	c.path = rp
+	return &c, nil
 }
 
 func (c *Config) Evaluate() error {
