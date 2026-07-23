@@ -1,5 +1,5 @@
 {
-	"name": "lesomnus.tegra-exporter",
+	"name": "lesomnus/tegra-exporter",
 	"dockerComposeFile": "docker-compose.yaml",
 	"service": "dev",
 	"workspaceFolder": "/workspace",

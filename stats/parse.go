@@ -188,27 +188,28 @@ func Parse(text string, stat *Stat) error {
 			}
 
 		default:
-			// Temperature: "name@valueC" e.g. "cpu@52.562C"
+			// Temperature: "name@valueC" e.g. "cpu@52.562C".
+			// Newer releases (L4T 39+) report "name@currentC/maxC" e.g.
+			// "cpu@34.843C/34.843C"; keep only the current reading.
 			if at := strings.IndexByte(tok, '@'); at > 0 && tok[len(tok)-1] == 'C' {
-				value, err := strconv.ParseFloat(tok[at+1:len(tok)-1], 32)
+				val_str := tok[at+1:]
+				if slash := strings.IndexByte(val_str, '/'); slash >= 0 {
+					val_str = val_str[:slash]
+				}
+				val_str = strings.TrimSuffix(val_str, "C")
+				value, err := strconv.ParseFloat(val_str, 32)
 				if err == nil {
 					stat.Temp = append(stat.Temp, Temp{Name: tok[:at], Value: float32(value)})
 					continue
 				}
 			}
-			// Power: "NAME YmW/ZmW"
+			// Power: "NAME YmW/ZmW" (current/average).
+			// Newer releases (L4T 39+) report "NAME YmW/ZmW/WmW"
+			// (current/average/max); keep the current and average values.
 			if next, ok := sc.peek(); ok {
-				slash := strings.IndexByte(next, '/')
-				if slash > 0 {
-					cur_m := strings.IndexByte(next[:slash], 'm')
-					if cur_m > 0 && next[cur_m:slash] == "mW" && len(next) > 2 && next[len(next)-2:] == "mW" {
-						current, err1 := strconv.ParseUint(next[:cur_m], 10, 64)
-						average, err2 := strconv.ParseUint(next[slash+1:len(next)-2], 10, 64)
-						if err1 == nil && err2 == nil {
-							sc.next() // consume the value token
-							stat.Power = append(stat.Power, Power{Name: tok, Current: uint(current), Average: uint(average)})
-						}
-					}
+				if cur, avg, ok := parsePower(next); ok {
+					sc.next() // consume the value token
+					stat.Power = append(stat.Power, Power{Name: tok, Current: cur, Average: avg})
 				}
 			}
 		}
@@ -498,6 +499,30 @@ func parsePercentFreq(sc *scanner) (pct, freq uint, off bool, err error) {
 		pct = uint(v)
 	}
 	return
+}
+
+// parsePower parses a power value token of the form "YmW/ZmW" (current/average)
+// or "YmW/ZmW/WmW" (current/average/max). It returns the current and average
+// values. ok is false if the token is not a power value.
+func parsePower(s string) (current, average uint, ok bool) {
+	parts := strings.Split(s, "/")
+	if len(parts) < 2 {
+		return 0, 0, false
+	}
+
+	vals := make([]uint, 0, len(parts))
+	for _, part := range parts {
+		num, found := strings.CutSuffix(part, "mW")
+		if !found {
+			return 0, 0, false
+		}
+		v, err := strconv.ParseUint(num, 10, 64)
+		if err != nil {
+			return 0, 0, false
+		}
+		vals = append(vals, uint(v))
+	}
+	return vals[0], vals[1], true
 }
 
 // parseGr3d reads one token and parses "X%@[Y,Y,...]" or "X%".

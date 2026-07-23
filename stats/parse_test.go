@@ -1,6 +1,7 @@
 package stats_test
 
 import (
+	"reflect"
 	"testing"
 	"time"
 
@@ -21,9 +22,13 @@ func TestParse(t *testing.T) {
 		t.Helper()
 		for i, tc := range tcs {
 			t.Run("", func(t *testing.T) {
-				err := stats.Parse(tc.Text, tc.Stat)
+				var got stats.Stat
+				err := stats.Parse(tc.Text, &got)
 				if err != nil {
 					t.Fatalf("[%d]: unexpected error: %v", i, err)
+				}
+				if !reflect.DeepEqual(&got, tc.Stat) {
+					t.Fatalf("[%d]: mismatch\n got: %+v\nwant: %+v", i, got, *tc.Stat)
 				}
 			})
 		}
@@ -287,6 +292,102 @@ func TestParse(t *testing.T) {
 						{Name: "VDD_GPU", Current: 0, Average: 0},
 						{Name: "VDD_CPU_SOC_MSS", Current: 4544, Average: 4544},
 						{Name: "VIN_SYS_5V0", Current: 4428, Average: 4294},
+					},
+				},
+			},
+		}
+		validate(t, tcs)
+	})
+
+	// R39 (release), REVISION: 2.0, GCID: 45755727, BOARD: generic, EABI: aarch64, DATE: Mon Jun  1 09:28:48 PM UTC 2026
+	// nvidia-l4t-core 39.2.0-20260601141651
+	t.Run("6.8.12-1021-tegra", func(t *testing.T) {
+		tcs := []TestCase{
+			{
+				Text: `07-23-2026 15:29:26 RAM 9101/125811MB (lfb 19x4MB) SWAP 0/2048MB (cached 0MB) CPU [39%@2160,20%@2160,16%@1944,15%@1944,17%@972,15%@972,19%@2214,22%@2214,13%@2430,20%@2430,26%@972,19%@972,15%@1836,22%@1836] EMC_FREQ 7%@3200 GR3D_FREQ @[314,314,314] NVENC0_FREQ @1556 NVENC1_FREQ @1556 NVDEC0_FREQ @1556 NVDEC1_FREQ @1556 NVJPG0_FREQ @1556 VIC 59%@423 OFA_FREQ @1556 PVA0_FREQ off APE 300 cpu@34.843C/34.843C tj@35.906C/35.906C soc012@34.437C/34.437C gpu@35.906C/35.906C soc345@34.406C/34.406C VDD_GPU 4925mW/4925mW/4925mW VDD_CPU_SOC_MSS 8710mW/8710mW/8710mW VIN_SYS_5V0 6767mW/6767mW/6767mW`,
+				Stat: &stats.Stat{
+					Time: time.Date(2026, 7, 23, 15, 29, 26, 0, time.UTC),
+					Ram:  stats.Ram{InUse: 9101, Total: 125811, LfbCount: 19, LfbSize: 4},
+					Swap: stats.Swap{InUse: 0, Total: 2048, Cached: 0},
+					Cpus: []stats.Cpu{
+						{Percent: 39, Freq: 2160},
+						{Percent: 20, Freq: 2160},
+						{Percent: 16, Freq: 1944},
+						{Percent: 15, Freq: 1944},
+						{Percent: 17, Freq: 972},
+						{Percent: 15, Freq: 972},
+						{Percent: 19, Freq: 2214},
+						{Percent: 22, Freq: 2214},
+						{Percent: 13, Freq: 2430},
+						{Percent: 20, Freq: 2430},
+						{Percent: 26, Freq: 972},
+						{Percent: 19, Freq: 972},
+						{Percent: 15, Freq: 1836},
+						{Percent: 22, Freq: 1836},
+					},
+					Emc:   stats.Emc{Percent: 7, Freq: 3200},
+					Gr3d:  stats.Gr3d{Percent: 0, Freq: []uint{314, 314, 314}},
+					NvEnc: []stats.NvEnc{{Percent: 0, Freq: 1556}, {Percent: 0, Freq: 1556}},
+					NvDec: []stats.NvDec{{Percent: 0, Freq: 1556}, {Percent: 0, Freq: 1556}},
+					NvJpg: []stats.NvJpg{{Percent: 0, Freq: 1556}},
+					Vic:   stats.Vic{Percent: 59, Freq: 423},
+					Ofa:   stats.Ofa{Percent: 0, Freq: 1556},
+					Ape:   stats.Ape{Freq: 300},
+					Temp: []stats.Temp{
+						{Name: "cpu", Value: 34.843},
+						{Name: "tj", Value: 35.906},
+						{Name: "soc012", Value: 34.437},
+						{Name: "gpu", Value: 35.906},
+						{Name: "soc345", Value: 34.406},
+					},
+					Power: []stats.Power{
+						{Name: "VDD_GPU", Current: 4925, Average: 4925},
+						{Name: "VDD_CPU_SOC_MSS", Current: 8710, Average: 8710},
+						{Name: "VIN_SYS_5V0", Current: 6767, Average: 6767},
+					},
+				},
+			},
+			{
+				Text: `07-23-2026 15:29:27 RAM 9091/125811MB (lfb 19x4MB) SWAP 0/2048MB (cached 0MB) CPU [40%@972,16%@972,18%@972,20%@972,13%@972,11%@972,15%@972,19%@972,10%@972,15%@972,28%@972,11%@972,11%@972,15%@972] EMC_FREQ 7%@3200 GR3D_FREQ @[314,314,314] NVENC0_FREQ @1556 NVENC1_FREQ @1556 NVDEC0_FREQ @1556 NVDEC1_FREQ @1556 NVJPG0_FREQ @1556 VIC 59%@423 OFA_FREQ @1556 PVA0_FREQ off APE 300 cpu@34.312C/34.843C tj@35.906C/35.906C soc012@34.093C/34.437C gpu@35.906C/35.906C soc345@34.437C/34.437C VDD_GPU 4925mW/4925mW/4925mW VDD_CPU_SOC_MSS 7953mW/8332mW/8710mW VIN_SYS_5V0 6667mW/6717mW/6767mW`,
+				Stat: &stats.Stat{
+					Time: time.Date(2026, 7, 23, 15, 29, 27, 0, time.UTC),
+					Ram:  stats.Ram{InUse: 9091, Total: 125811, LfbCount: 19, LfbSize: 4},
+					Swap: stats.Swap{InUse: 0, Total: 2048, Cached: 0},
+					Cpus: []stats.Cpu{
+						{Percent: 40, Freq: 972},
+						{Percent: 16, Freq: 972},
+						{Percent: 18, Freq: 972},
+						{Percent: 20, Freq: 972},
+						{Percent: 13, Freq: 972},
+						{Percent: 11, Freq: 972},
+						{Percent: 15, Freq: 972},
+						{Percent: 19, Freq: 972},
+						{Percent: 10, Freq: 972},
+						{Percent: 15, Freq: 972},
+						{Percent: 28, Freq: 972},
+						{Percent: 11, Freq: 972},
+						{Percent: 11, Freq: 972},
+						{Percent: 15, Freq: 972},
+					},
+					Emc:   stats.Emc{Percent: 7, Freq: 3200},
+					Gr3d:  stats.Gr3d{Percent: 0, Freq: []uint{314, 314, 314}},
+					NvEnc: []stats.NvEnc{{Percent: 0, Freq: 1556}, {Percent: 0, Freq: 1556}},
+					NvDec: []stats.NvDec{{Percent: 0, Freq: 1556}, {Percent: 0, Freq: 1556}},
+					NvJpg: []stats.NvJpg{{Percent: 0, Freq: 1556}},
+					Vic:   stats.Vic{Percent: 59, Freq: 423},
+					Ofa:   stats.Ofa{Percent: 0, Freq: 1556},
+					Ape:   stats.Ape{Freq: 300},
+					Temp: []stats.Temp{
+						{Name: "cpu", Value: 34.312},
+						{Name: "tj", Value: 35.906},
+						{Name: "soc012", Value: 34.093},
+						{Name: "gpu", Value: 35.906},
+						{Name: "soc345", Value: 34.437},
+					},
+					Power: []stats.Power{
+						{Name: "VDD_GPU", Current: 4925, Average: 4925},
+						{Name: "VDD_CPU_SOC_MSS", Current: 7953, Average: 8332},
+						{Name: "VIN_SYS_5V0", Current: 6667, Average: 6717},
 					},
 				},
 			},
