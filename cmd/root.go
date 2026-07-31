@@ -170,6 +170,9 @@ func newCollector(ctx context.Context) (func(v *stats.Stat), error) {
 			swap_cached.Record(ctx, int64(v.Swap.Cached))
 		}
 		for i, w := range v.Cpus {
+			if w.Offline {
+				continue
+			}
 			attr := metric.WithAttributes(attribute.String("index", fmt.Sprintf("%d", i)))
 			cpu_utilization.Record(ctx, int64(w.Percent), attr)
 			cpu_frequency.Record(ctx, int64(w.Freq), attr)

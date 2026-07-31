@@ -391,6 +391,45 @@ func TestParse(t *testing.T) {
 					},
 				},
 			},
+			{
+				// Some CPU cores powered down: tegrastats reports them as "off"
+				// inside the CPU bracket instead of "X%@Z".
+				Text: `07-31-2026 14:58:05 RAM 4714/62878MB (lfb 7x4MB) SWAP 0/2048MB (cached 0MB) CPU [78%@1728,33%@1728,46%@1728,55%@1728,49%@729,48%@729,37%@729,57%@729,off,off,off,off] EMC_FREQ 2%@2133 GR3D_FREQ 0%@[0,0] NVENC0 off NVDEC0 off NVJPG0 off NVJPG1 off VIC off OFA off NVDLA0 off NVDLA1 off PVA0_FREQ off APE 174 cpu@50.718C/50.718C soc2@47.656C/47.656C soc0@47.156C/47.156C tj@50.718C/50.718C soc1@49C/49C VDD_GPU_SOC 2265mW/2265mW/2265mW VDD_CPU_CV 2643mW/2643mW/2643mW VIN_SYS_5V0 4722mW/4722mW/4722mW`,
+				Stat: &stats.Stat{
+					Time: time.Date(2026, 7, 31, 14, 58, 5, 0, time.UTC),
+					Ram:  stats.Ram{InUse: 4714, Total: 62878, LfbCount: 7, LfbSize: 4},
+					Swap: stats.Swap{InUse: 0, Total: 2048, Cached: 0},
+					Cpus: []stats.Cpu{
+						{Percent: 78, Freq: 1728},
+						{Percent: 33, Freq: 1728},
+						{Percent: 46, Freq: 1728},
+						{Percent: 55, Freq: 1728},
+						{Percent: 49, Freq: 729},
+						{Percent: 48, Freq: 729},
+						{Percent: 37, Freq: 729},
+						{Percent: 57, Freq: 729},
+						{Offline: true},
+						{Offline: true},
+						{Offline: true},
+						{Offline: true},
+					},
+					Emc:  stats.Emc{Percent: 2, Freq: 2133},
+					Gr3d: stats.Gr3d{Percent: 0, Freq: []uint{0, 0}},
+					Ape:  stats.Ape{Freq: 174},
+					Temp: []stats.Temp{
+						{Name: "cpu", Value: 50.718},
+						{Name: "soc2", Value: 47.656},
+						{Name: "soc0", Value: 47.156},
+						{Name: "tj", Value: 50.718},
+						{Name: "soc1", Value: 49},
+					},
+					Power: []stats.Power{
+						{Name: "VDD_GPU_SOC", Current: 2265, Average: 2265},
+						{Name: "VDD_CPU_CV", Current: 2643, Average: 2643},
+						{Name: "VIN_SYS_5V0", Current: 4722, Average: 4722},
+					},
+				},
+			},
 		}
 		validate(t, tcs)
 	})

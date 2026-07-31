@@ -91,6 +91,9 @@ type Cpu struct {
 	Percent uint // X
 	// CPU frequency in megahertz.
 	Freq uint // Z
+	// Offline is true when the core is powered down; tegrastats reports the core
+	// as "off" instead of "X%@Z". Percent and Freq are zero in that case.
+	Offline bool
 }
 
 // Emc is External memory controller statistics.

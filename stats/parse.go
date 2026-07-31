@@ -416,6 +416,10 @@ func parseCpu(sc *scanner) ([]Cpu, error) {
 		for len(inner) > 0 {
 			var part string
 			part, inner, _ = strings.Cut(inner, ",")
+			if part == "off" {
+				cpus = append(cpus, Cpu{Offline: true})
+				continue
+			}
 			pct_end := len(part)
 			if pct_end > 0 && part[pct_end-1] == '%' {
 				pct_end--
@@ -432,6 +436,10 @@ func parseCpu(sc *scanner) ([]Cpu, error) {
 		for len(inner) > 0 {
 			var part string
 			part, inner, _ = strings.Cut(inner, ",")
+			if part == "off" {
+				cpus = append(cpus, Cpu{Offline: true})
+				continue
+			}
 			pct_str, freq_str, ok := strings.Cut(part, "@")
 			if !ok {
 				return nil, fmt.Errorf("invalid core: %s", part)
