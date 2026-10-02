@@ -14,6 +14,7 @@ import (
 	"github.com/lesomnus/otx"
 	"github.com/lesomnus/otx/log"
 	"github.com/lesomnus/tegra-exporter/cmd/version"
+	"github.com/lesomnus/tegra-exporter/stats"
 	"github.com/lesomnus/xli"
 	"github.com/lesomnus/xli/flg"
 	"github.com/lesomnus/z"
@@ -80,9 +81,11 @@ func NewCmdConfig() *xli.Command {
 type Config struct {
 	path string
 
-	Stat   []string
-	Health HealthConfig
-	Otel   OtelConfig
+	Stat []string
+	// Chroot to run `Stat` in, e.g. the host's root mounted in a container.
+	RootPath string `yaml:"root_path"`
+	Health   HealthConfig
+	Otel     OtelConfig
 }
 
 func readConfig(path_to_lookup ...string) (*Config, error) {
@@ -129,7 +132,16 @@ func (c *Config) Evaluate() error {
 	if len(c.Stat) == 0 {
 		c.Stat = []string{"tegrastats"}
 	}
+	if c.RootPath != "" && !c.IsFake() {
+		if err := stats.ValidateRoot(c.RootPath, c.Stat[0]); err != nil {
+			return fmt.Errorf("root_path: %w", err)
+		}
+	}
 	return c.Health.Evaluate()
+}
+
+func (c *Config) IsFake() bool {
+	return len(c.Stat) == 1 && c.Stat[0] == "$fake"
 }
 
 type HealthConfig struct {

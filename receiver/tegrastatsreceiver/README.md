@@ -33,6 +33,7 @@ receivers:
 | --------------------- | ---------------- | ------------------------------------------------------------------------------------ |
 | `mode`                | `push`           | `push` or `scrape`; see below.                                                       |
 | `command`             | `["tegrastats"]` | Command and arguments to run. `["$fake"]` generates fake stats with a random walk.   |
+| `root_path`           |                  | Chroot to run `command` in; `command[0]` must then be absolute. See below.           |
 | `collection_interval` | `1m`             | `scrape` only. How often to emit.                                                    |
 | `initial_delay`       | `1s`             | `scrape` only. Delay before the first emission.                                      |
 | `timeout`             | `0s`             | `scrape` only. Timeout of each emission; `0s` means no timeout.                      |
@@ -56,14 +57,20 @@ Data points are timestamped when the line is read, because `tegrastats` prints l
 
 ## Running in a container
 
-`tegrastats` comes from the host's JetPack, so the Collector container needs what the `tegra-exporter` image needs:
+`tegrastats` and the libraries it needs come from the host's JetPack.
+Mount the host's root and set `root_path`, as for the `journald` receiver:
 
-```sh
--v /sys:/sys:ro \
--v /sys/kernel/debug:/sys/kernel/debug:ro \
--v /dev:/dev \
--v /lib:/lib:ro \
--v /usr/bin/tegrastats:/usr/bin/tegrastats:ro
+```yaml
+receivers:
+  tegrastats:
+    root_path: /hostfs
+    command: ["/usr/bin/tegrastats"]
 ```
 
-Some values, such as GR3D and EMC, are only readable as root.
+```sh
+docker run -v /:/hostfs:ro --user 0 ...
+```
+
+- `-v` bind mounts are recursive, so the host's `/sys`, `/sys/kernel/debug`, and `/dev` come along under `/hostfs`.
+- `chroot` needs root and `CAP_SYS_CHROOT`. Docker grants the capability by default,
+  but the official Collector images run as UID 10001, hence `--user 0`.

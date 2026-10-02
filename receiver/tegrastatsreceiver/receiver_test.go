@@ -2,6 +2,7 @@ package tegrastatsreceiver_test
 
 import (
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -41,6 +42,25 @@ func TestConfigValidate(t *testing.T) {
 			c.StaleTimeout = 0
 		}, false},
 		{"push ignores stale timeout", func(c *tegrastatsreceiver.Config) { c.StaleTimeout = 0 }, true},
+		{"root path", func(c *tegrastatsreceiver.Config) {
+			c.RootPath = t.TempDir()
+			c.Command = []string{"/usr/bin/tegrastats"}
+		}, true},
+		{"root path with relative command", func(c *tegrastatsreceiver.Config) {
+			c.RootPath = t.TempDir()
+		}, false},
+		{"relative root path", func(c *tegrastatsreceiver.Config) {
+			c.RootPath = "hostfs"
+			c.Command = []string{"/usr/bin/tegrastats"}
+		}, false},
+		{"missing root path", func(c *tegrastatsreceiver.Config) {
+			c.RootPath = t.TempDir() + "/missing"
+			c.Command = []string{"/usr/bin/tegrastats"}
+		}, false},
+		{"root path ignored for fake", func(c *tegrastatsreceiver.Config) {
+			c.RootPath = "hostfs"
+			c.Command = []string{"$fake"}
+		}, true},
 	}
 	for _, tc := range tcs {
 		t.Run(tc.desc, func(t *testing.T) {
@@ -109,6 +129,38 @@ func TestReceiver(t *testing.T) {
 				return
 			}
 		})
+	}
+}
+
+func TestRootPath(t *testing.T) {
+	if os.Geteuid() != 0 {
+		t.Skip("chroot needs root")
+	}
+
+	f := tegrastatsreceiver.NewFactory()
+	c := f.CreateDefaultConfig().(*tegrastatsreceiver.Config)
+	c.RootPath = "/"
+	c.Command = []string{"/bin/sh", "-c", command[2]}
+	if err := c.Validate(); err != nil {
+		t.Fatal(err)
+	}
+
+	sink := new(consumertest.MetricsSink)
+	r, err := f.CreateMetrics(t.Context(), receivertest.NewNopSettings(tegrastatsreceiver.Type), c, sink)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := r.Start(t.Context(), componenttest.NewNopHost()); err != nil {
+		t.Fatal(err)
+	}
+	defer r.Shutdown(t.Context())
+
+	deadline := time.Now().Add(5 * time.Second)
+	for !hasData(sink) {
+		if time.Now().After(deadline) {
+			t.Fatal("no metrics received")
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 }
 
