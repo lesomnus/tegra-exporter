@@ -77,6 +77,12 @@ otel:
 `otlp` exporter can be used to push metrics to a remote OpenTelemetry Collector.
 
 
+### OpenTelemetry Collector receiver
+
+To run `tegrastats` inside an OpenTelemetry Collector instead of as a separate process,
+build the Collector with [`receiver/tegrastatsreceiver`](receiver/tegrastatsreceiver).
+It produces the same metrics listed below.
+
 ## Metrics
 
 All metrics are exposed as OpenTelemetry gauges.

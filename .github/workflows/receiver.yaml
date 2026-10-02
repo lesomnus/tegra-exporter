@@ -1,0 +1,31 @@
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/receiver.yaml"
+      - "receiver/**"
+      - "stats/**"
+      - "go.mod"
+      - "go.sum"
+  pull_request:
+    paths:
+      - ".github/workflows/receiver.yaml"
+      - "receiver/**"
+      - "stats/**"
+      - "go.mod"
+      - "go.sum"
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04-arm
+    defaults:
+      run:
+        working-directory: receiver/tegrastatsreceiver
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: receiver/tegrastatsreceiver/go.mod
+          cache-dependency-path: receiver/tegrastatsreceiver/go.sum
+      - run: go vet ./...
+      - run: go test -v -race ./...
