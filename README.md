@@ -17,16 +17,24 @@ Pre-built binaries for `linux/arm64` are attached to each [GitHub Release](https
 
 ### Docker
 
+`tegrastats` and the libraries it needs come from the host's JetPack, so mount the host's root
+and let `tegra-exporter` run `tegrastats` chrooted into it:
+
 ```sh
+cat > tegra-exporter.yaml <<EOF
+stat: ["/usr/bin/tegrastats"]
+root_path: /hostfs
+EOF
+
 docker run \
-  -v /sys:/sys:ro \
-  -v /sys/kernel/debug:/sys/kernel/debug:ro \
-  -v /dev:/dev \
-  -v /lib:/lib:ro \
-  -v /usr/bin/tegrastats:/usr/bin/tegrastats:ro \
+  -v /:/hostfs:ro \
   -v $(pwd)/tegra-exporter.yaml:/tegra-exporter.yaml:ro \
   -it --rm ghcr.io/lesomnus/tegra-exporter:260510
 ```
+
+- `-v` bind mounts are recursive, so the host's `/sys`, `/sys/kernel/debug`, and `/dev` come along under `/hostfs`.
+- `chroot` needs root and `CAP_SYS_CHROOT`; Docker grants both by default.
+- With `root_path`, the first element of `stat` must be an absolute path inside it.
 
 ### Build from source
 
@@ -56,6 +64,8 @@ otel:
       exporters:
         - pretty
 ```
+
+`root_path` runs `stat` chrooted into that directory; see [Docker](#docker).
 
 `tegra-exporter` looks for a config file named `tegra-exporter.yaml` (or `.yml`) in the current working directory.
 If no config file is found, it uses default config shown above.

@@ -41,10 +41,13 @@ func NewCmdRoot() *xli.Command {
 				}
 
 				l := log.From(ctx)
-				l.Info("executing stats", slog.String("args", strings.Join(c.Stat, " ")))
+				l.Info("executing stats",
+					slog.String("args", strings.Join(c.Stat, " ")),
+					slog.String("root_path", c.RootPath),
+				)
 
 				var listener stats.Listener
-				if len(c.Stat) == 1 && c.Stat[0] == "$fake" {
+				if c.IsFake() {
 					l.Warn("use fake stats")
 					listener = stats.NewFake()
 				} else {
@@ -52,7 +55,7 @@ func NewCmdRoot() *xli.Command {
 					if len(c.Stat) > 1 {
 						args = c.Stat[1:]
 					}
-					execute := stats.Execute(c.Stat[0], args...)
+					execute := stats.ExecuteIn(c.RootPath, c.Stat[0], args...)
 					s := stats.NewSupervisor(ctx, execute)
 					if err := s.Start(); err != nil {
 						return fmt.Errorf("start supervisor: %w", err)
