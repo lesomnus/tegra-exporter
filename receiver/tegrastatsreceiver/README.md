@@ -53,6 +53,8 @@ receivers:
 ```
 
 If the command exits, it is restarted after 3 seconds and the reason is logged.
+If the command is not installed (looked up in `PATH`, or under `root_path` when set), the receiver logs that once and stays idle,
+so the same configuration can run on nodes without `tegrastats`.
 Data points are timestamped when the line is read, because `tegrastats` prints local time without a zone.
 
 ## Running in a container
