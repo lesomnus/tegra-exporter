@@ -20,8 +20,9 @@ import (
 
 // source runs `tegrastats` (or the fake) and hands each parsed line to a callback.
 type source struct {
-	command []string
-	logger  *zap.Logger
+	command   []string
+	root_path string
+	logger    *zap.Logger
 
 	supervisor *stats.Supervisor
 	stop       func()
@@ -34,9 +35,14 @@ func (s *source) start(f func(v *stats.Stat)) error {
 		return nil
 	}
 
+	s.logger.Info("run tegrastats",
+		zap.Strings("command", s.command),
+		zap.String("root_path", s.root_path),
+	)
+
 	// The context given to Start must not outlive it, so the supervisor gets its own.
 	ctx := log.Into(context.Background(), slog.New(zapslog.NewHandler(s.logger.Core())))
-	s.supervisor = stats.NewSupervisor(ctx, stats.Execute(s.command[0], s.command[1:]...))
+	s.supervisor = stats.NewSupervisor(ctx, stats.ExecuteIn(s.root_path, s.command[0], s.command[1:]...))
 	s.stop = s.supervisor.Listen(f)
 	return s.supervisor.Start()
 }
@@ -66,7 +72,7 @@ func newPushReceiver(c *Config, set receiver.Settings, next consumer.Metrics) (*
 		return nil, err
 	}
 	return &pushReceiver{
-		source: source{command: c.Command, logger: set.Logger},
+		source: source{command: c.Command, root_path: c.RootPath, logger: set.Logger},
 		next:   next,
 		obsrep: obsrep,
 	}, nil
@@ -106,7 +112,7 @@ type statScraper struct {
 
 func newScraper(c *Config, logger *zap.Logger) *statScraper {
 	return &statScraper{
-		source:        source{command: c.Command, logger: logger},
+		source:        source{command: c.Command, root_path: c.RootPath, logger: logger},
 		stale_timeout: c.StaleTimeout,
 	}
 }

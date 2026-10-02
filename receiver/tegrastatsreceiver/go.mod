@@ -6,7 +6,7 @@ replace github.com/lesomnus/tegra-exporter => ../..
 
 require (
 	github.com/lesomnus/otx v0.0.0-20260411134633-a35e9d32c8ef
-	github.com/lesomnus/tegra-exporter v0.0.0-20260907061108-93e5ac349c46
+	github.com/lesomnus/tegra-exporter v0.0.0-20261002124901-92ae5a78589c
 	go.opentelemetry.io/collector/component v1.62.0
 	go.opentelemetry.io/collector/component/componenttest v0.156.0
 	go.opentelemetry.io/collector/consumer v1.62.0
