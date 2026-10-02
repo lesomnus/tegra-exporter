@@ -2,6 +2,8 @@ package tegrastatsreceiver_test
 
 import (
 	"fmt"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest/observer"
 	"os"
 	"testing"
 	"time"
@@ -161,6 +163,67 @@ func TestRootPath(t *testing.T) {
 			t.Fatal("no metrics received")
 		}
 		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+func TestNotInstalled(t *testing.T) {
+	tcs := []struct {
+		desc string
+		edit func(c *tegrastatsreceiver.Config)
+	}{
+		{"not in PATH", func(c *tegrastatsreceiver.Config) {
+			c.Command = []string{"tegrastats-that-does-not-exist"}
+		}},
+		{"absolute path", func(c *tegrastatsreceiver.Config) {
+			c.Command = []string{t.TempDir() + "/tegrastats"}
+		}},
+		{"not in root path", func(c *tegrastatsreceiver.Config) {
+			c.RootPath = t.TempDir()
+			c.Command = []string{"/usr/bin/tegrastats"}
+		}},
+	}
+	for _, mode := range []tegrastatsreceiver.Mode{tegrastatsreceiver.ModePush, tegrastatsreceiver.ModeScrape} {
+		for _, tc := range tcs {
+			t.Run(string(mode)+"/"+tc.desc, func(t *testing.T) {
+				f := tegrastatsreceiver.NewFactory()
+				c := f.CreateDefaultConfig().(*tegrastatsreceiver.Config)
+				c.Mode = mode
+				c.CollectionInterval = 10 * time.Millisecond
+				c.InitialDelay = 0
+				tc.edit(c)
+				if err := c.Validate(); err != nil {
+					t.Fatal(err)
+				}
+
+				core, logs := observer.New(zap.InfoLevel)
+				set := receivertest.NewNopSettings(tegrastatsreceiver.Type)
+				set.Logger = zap.New(core)
+
+				sink := new(consumertest.MetricsSink)
+				r, err := f.CreateMetrics(t.Context(), set, c, sink)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := r.Start(t.Context(), componenttest.NewNopHost()); err != nil {
+					t.Fatal(err)
+				}
+				// A supervisor would have tried, and warned, right away.
+				time.Sleep(100 * time.Millisecond)
+				if err := r.Shutdown(t.Context()); err != nil {
+					t.Fatal(err)
+				}
+
+				if n := logs.FilterMessageSnippet("not installed").Len(); n != 1 {
+					t.Fatalf("want one idle message, got %d: %v", n, logs.All())
+				}
+				if n := logs.FilterLevelExact(zap.WarnLevel).Len(); n != 0 {
+					t.Fatalf("want no warnings, got %v", logs.FilterLevelExact(zap.WarnLevel).All())
+				}
+				if n := sink.DataPointCount(); n != 0 {
+					t.Fatalf("want no data points, got %d", n)
+				}
+			})
+		}
 	}
 }
 

@@ -2,7 +2,12 @@ package tegrastatsreceiver
 
 import (
 	"context"
+	"errors"
+	"io/fs"
 	"log/slog"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"sync/atomic"
 	"time"
 
@@ -35,6 +40,16 @@ func (s *source) start(f func(v *stats.Stat)) error {
 		return nil
 	}
 
+	if !s.installed() {
+		// One config fits every node: where there is no tegrastats, stay idle
+		// rather than retrying and warning every few seconds.
+		s.logger.Info("tegrastats is not installed; the receiver stays idle",
+			zap.Strings("command", s.command),
+			zap.String("root_path", s.root_path),
+		)
+		return nil
+	}
+
 	s.logger.Info("run tegrastats",
 		zap.Strings("command", s.command),
 		zap.String("root_path", s.root_path),
@@ -45,6 +60,19 @@ func (s *source) start(f func(v *stats.Stat)) error {
 	s.supervisor = stats.NewSupervisor(ctx, stats.ExecuteIn(s.root_path, s.command[0], s.command[1:]...))
 	s.stop = s.supervisor.Listen(f)
 	return s.supervisor.Start()
+}
+
+// installed reports whether the command exists where it will run.
+// Only absence counts; any other error is left for the supervisor to report.
+func (s *source) installed() bool {
+	if s.root_path == "" {
+		_, err := exec.LookPath(s.command[0])
+		return !errors.Is(err, exec.ErrNotFound) && !errors.Is(err, fs.ErrNotExist)
+	}
+
+	// Lstat, since an absolute symlink is resolved only after the chroot.
+	_, err := os.Lstat(filepath.Join(s.root_path, s.command[0]))
+	return !errors.Is(err, fs.ErrNotExist)
 }
 
 func (s *source) shutdown() {
